@@ -3,7 +3,7 @@ import {AppRegistry, Button} from 'react-native';
 import {ApolloClient} from 'apollo-client';
 import {ApolloProvider} from '@apollo/react-components';
 import {InMemoryCache} from 'apollo-cache-inmemory';
-import {HttpLink} from 'apollo-link-http';
+import {HttpLink, createHttpLink} from 'apollo-link-http';
 
 import gql from 'graphql-tag';
 import {Mutation} from '@apollo/react-components';
@@ -39,55 +39,52 @@ const REGISTER = gql`
   }
 `;
 
-// Create the client as outlined in the setup guide
-// Instantiate required constructor fields
-const cache = new InMemoryCache();
-const link = new HttpLink({
-  uri: 'http://127.0.0.1:8000/graphiql',
-});
-const defaultOptions = {
-  watchQuery: {
-    fetchPolicy: 'cache-and-network',
-    errorPolicy: 'all',
-  },
-  query: {
-    fetchPolicy: 'network-only',
-    errorPolicy: 'all',
-  },
-  mutate: {
-    errorPolicy: 'all',
-  },
+// const client = new ApolloClient({
+//   // Provide required constructor fields
+//   cache: cache,
+//   link: link,
+// });
+
+const customFetch = (uri, options) => {
+  return fetch(uri, options).then(response => {
+    if (response.status >= 500) {
+      // or handle 400 errors
+      return Promise.reject(response.status);
+    }
+    return response;
+  });
 };
-
 const client = new ApolloClient({
-  // Provide required constructor fields
-  cache: cache,
-  link: link,
-
-  // Provide some optional constructor fields
-  connectToDevTools: true,
-  defaultOptions,
+  link: createHttpLink({
+    uri: 'http://192.168.0.13:8000/graphql',
+    fetch: customFetch,
+  }),
+  cache: new InMemoryCache(),
 });
 
 const MyRootComponent = () => {
   return (
     <Mutation mutation={REGISTER}>
-      {(register, {data}) => (
-        <Button
-          onPress={() => {
-            register({
-              variables: {
-                email: 'user@test.de',
-                password: 'Test123!',
-                passwordConfirm: 'Test123!',
-              },
-            });
-          }}
-          title="Learn More"
-          color="#841584"
-          accessibilityLabel="Learn more about this purple button"
-        />
-      )}
+      {(register, {data, error}) => {
+        console.log(data);
+        console.log(error);
+        return (
+          <Button
+            onPress={() => {
+              register({
+                variables: {
+                  email: 'user@test.de',
+                  password: 'Test123!',
+                  passwordConfirm: 'Test123!',
+                },
+              });
+            }}
+            title="Learn More"
+            color="#841584"
+            accessibilityLabel="Learn more about this purple button"
+          />
+        );
+      }}
     </Mutation>
   );
 };
